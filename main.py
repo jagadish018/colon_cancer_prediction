@@ -2,37 +2,21 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 import os
-import gdown
-from PIL import Image
 
-# Google Drive model setup
-file_id = '1Izx86aritVv9VgHCf9rh6UxGDZv0wob4'
-model_path = 'saved_model.keras'
-
-# Download the model from Google Drive if not already downloaded
-if not os.path.exists(model_path):
-    with st.spinner('Downloading model... Please wait...'):
-        gdown.download(f'https://drive.google.com/uc?id={file_id}&export=download', model_path, quiet=False)
-
-# Load the model once after download
+# Load model once at startup
 @st.cache_resource(show_spinner=False)
 def load_model():
-    return tf.keras.models.load_model(model_path)
+    return tf.keras.models.load_model("resnet50_colon_cancer_model.h5")
 
 model = load_model()
 
-# TensorFlow Model Prediction - accepts uploaded file (BytesIO)
-def model_prediction(uploaded_file):
-    try:
-        image = Image.open(uploaded_file).convert('RGB')
-        image = image.resize((256, 256))
-        input_arr = np.array(image) / 255.0  # Normalize if your model expects it
-        input_arr = np.expand_dims(input_arr, axis=0)  # Add batch dimension
-        predictions = model.predict(input_arr)
-        return np.argmax(predictions)
-    except Exception as e:
-        st.error(f"Error during prediction: {e}")
-        return None
+# Tensorflow Model Prediction
+def model_prediction(test_image):
+    image = tf.keras.preprocessing.image.load_img(test_image, target_size=(256, 256))
+    input_arr = tf.keras.preprocessing.image.img_to_array(image)
+    input_arr = np.expand_dims(input_arr, axis=0)  # Convert single image to batch
+    predictions = model.predict(input_arr)
+    return np.argmax(predictions)  # Return index of max element
 
 # Sidebar
 st.sidebar.title("Dashboard")
@@ -42,12 +26,12 @@ app_mode = st.sidebar.selectbox("Select Page", ["Home", "About", "Cancer Predict
 if app_mode == "Home":
     st.header("COLON CANCER PREDICTION SYSTEM")
     image_path = "images.jpeg"
-
+    
     if os.path.exists(image_path):
         st.image(image_path, use_column_width=True)
     else:
         st.warning("Image not found. Please ensure 'images.jpeg' is in the correct directory.")
-
+    
     st.markdown("""
     Welcome to the Colon Cancer Prediction System! 🩺🔍
 
@@ -95,19 +79,21 @@ elif app_mode == "Cancer Prediction":
     if test_image is not None:
         if st.button("Show Image"):
             st.image(test_image, use_column_width=True)
-
+        
         if st.button("Predict"):
-            st.write("Our Prediction")
+            st.write("Our Prediction:")
             result_index = model_prediction(test_image)
-            if result_index is not None:
-                class_name = ['ADI', 'BACK', 'DEB', 'LYM', 'MUC', 'MUS', 'NORM', 'STR', 'TUM']
-                result_label = class_name[result_index]
 
-                if result_label in ['DEB', 'LYM', 'MUC', 'MUS', 'STR', 'TUM']:
-                    st.error(f"The image is a cancer tissue. It's a {result_label}.")
-                elif result_label == 'NORM':
-                    st.success("The image is not a cancer tissue.")
-                else:
-                    st.warning(f"The image is not a cancer tissue. It is another object: {result_label}")
+            # Class labels
+            class_names = ['ADI', 'BACK', 'DEB', 'LYM', 'MUC', 'MUS', 'NORM', 'STR', 'TUM']
+
+            cancer_classes = {'DEB', 'LYM', 'MUC', 'MUS', 'STR', 'TUM'}
+
+            predicted_label = class_names[result_index]
+
+            if predicted_label in cancer_classes:
+                st.error(f"The image is a cancer tissue. It's a {predicted_label}.")
+            elif predicted_label == 'NORM':
+                st.success("The image is not a cancer tissue.")
             else:
-                st.error("Prediction failed. Please try again with a different image.")
+                st.warning(f"The image is not a cancer tissue. It is another object: {predicted_label}")
