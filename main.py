@@ -1,7 +1,11 @@
-import gdown
-import os
 import streamlit as st
+import tensorflow as tf
+import numpy as np
+import os
+import gdown
 
+
+# Model download and load
 MODEL_PATH = "saved_model.keras"
 DRIVE_URL = "https://drive.google.com/uc?id=1Izx86aritVv9VgHCf9rh6UxGDZv0wob4"
 
@@ -9,15 +13,20 @@ if not os.path.exists(MODEL_PATH):
     with st.spinner("Downloading model..."):
         gdown.download(DRIVE_URL, MODEL_PATH, quiet=False, fuzzy=True)
 
+@st.cache_resource  # cache model so it's not reloaded every time
+def load_model():
+    return tf.keras.models.load_model(MODEL_PATH)
+
+model = load_model()
 
 # Tensorflow Model Prediction
 def model_prediction(test_image):
-    model = tf.keras.models.load_model(MODEL_PATH)
     image = tf.keras.preprocessing.image.load_img(test_image, target_size=(256, 256))
     input_arr = tf.keras.preprocessing.image.img_to_array(image)
     input_arr = np.expand_dims(input_arr, axis=0)
     predictions = model.predict(input_arr)
     return np.argmax(predictions)
+
 
 
 
@@ -31,7 +40,8 @@ if app_mode == "Home":
     image_path = "images.jpeg"
      
     if os.path.exists(image_path):
-        st.image(image_path, use_column_width=True)
+        st.image(..., use_container_width=True)
+
     else:
         st.warning("Image not found. Please ensure 'colon_cancer.jpg' is in the correct directory.")
     st.markdown("""
