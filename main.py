@@ -1,36 +1,25 @@
-import streamlit as st
-import tensorflow as tf
-import numpy as np
-import os
 import gdown
-import zipfile
+import os
+import streamlit as st
 
-# Google Drive zipped model setup
-file_id = '1Izx86aritVv9VgHCf9rh6UxGDZv0wob4'
-zip_path = 'model.zip'
-model_folder = 'saved_model'
+MODEL_PATH = "saved_model.keras"
+DRIVE_URL = "https://drive.google.com/uc?id=1Izx86aritVv9VgHCf9rh6UxGDZv0wob4"
 
-# Download and unzip model if not present
-if not os.path.exists(model_folder):
-    with st.spinner('Downloading model... Please wait...'):
-        gdown.download(f'https://drive.google.com/uc?id={file_id}&export=download', zip_path, quiet=False)
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(model_folder)
-    os.remove(zip_path)
+if not os.path.exists(MODEL_PATH):
+    with st.spinner("Downloading model..."):
+        gdown.download(DRIVE_URL, MODEL_PATH, quiet=False, fuzzy=True)
 
-@st.cache_resource(show_spinner=False)
-def load_model():
-    model = tf.keras.models.load_model(model_folder)
-    return model
 
-model = load_model()
-
+# Tensorflow Model Prediction
 def model_prediction(test_image):
+    model = tf.keras.models.load_model(MODEL_PATH)
     image = tf.keras.preprocessing.image.load_img(test_image, target_size=(256, 256))
     input_arr = tf.keras.preprocessing.image.img_to_array(image)
-    input_arr = np.expand_dims(input_arr, axis=0)  # Convert single image to batch
+    input_arr = np.expand_dims(input_arr, axis=0)
     predictions = model.predict(input_arr)
-    return np.argmax(predictions)  # Return index of max element
+    return np.argmax(predictions)
+
+
 
 # Sidebar
 st.sidebar.title("Dashboard")
@@ -40,15 +29,14 @@ app_mode = st.sidebar.selectbox("Select Page", ["Home", "About", "Cancer Predict
 if app_mode == "Home":
     st.header("COLON CANCER PREDICTION SYSTEM")
     image_path = "images.jpeg"
-    
+     
     if os.path.exists(image_path):
         st.image(image_path, use_column_width=True)
     else:
-        st.warning("Image not found. Please ensure 'images.jpeg' is in the correct directory.")
-    
+        st.warning("Image not found. Please ensure 'colon_cancer.jpg' is in the correct directory.")
     st.markdown("""
     Welcome to the Colon Cancer Prediction System! 🩺🔍
-
+    
     Our mission is to assist in the early detection of colon cancer using advanced deep learning techniques. Upload a histopathological image, and our system will analyze it to detect any signs of colon cancer. Together, let's improve diagnosis and treatment outcomes!
 
     ### How It Works
@@ -94,16 +82,19 @@ elif app_mode == "Cancer Prediction":
         if st.button("Show Image"):
             st.image(test_image, use_column_width=True)
         
+        # Predict button
         if st.button("Predict"):
             st.write("Our Prediction")
             result_index = model_prediction(test_image)
             
-            class_name = ['ADI', 'BACK', 'DEB', 'LYM', 'MUC', 'MUS', 'NORM', 'STR', 'TUM']
-            result_label = class_name[result_index]
+            # Reading Labels
+            class_name =['ADI', 'BACK', 'DEB', 'LYM', 'MUC', 'MUS', 'NORM', 'STR', 'TUM']
             
-            if result_label in ['DEB', 'LYM', 'MUC', 'MUS', 'STR', 'TUM']:
-                st.error(f"The image is a cancer tissue. It's a {result_label}.")
-            elif result_label == 'NORM':
-                st.success("The image is not a cancer tissue.")
+            # Display the prediction
+           
+            if class_name[result_index] =='DEB' or class_name[result_index] == 'LYM'or class_name[result_index] == 'MUC'or class_name[result_index] == 'MUS'or class_name[result_index] ==  'STR' or class_name[result_index] == 'TUM'   :
+                st.error("The image is a cancer tissue. it's a {}".format(class_name[result_index]))
+            elif class_name[result_index] =='NORM':
+                st.success("The image is not a cancer tissue ")    
             else:
-                st.warning(f"The image is not a cancer tissue. It is another object: {result_label}")
+                st.error("The image is not a cancer tissue it is a other object")
