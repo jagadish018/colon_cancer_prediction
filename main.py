@@ -2,15 +2,29 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 import os
+import gdown
+import zipfile
 
-# Load model once at startup
+# Google Drive zipped model setup
+file_id = '1Izx86aritVv9VgHCf9rh6UxGDZv0wob4'
+zip_path = 'model.zip'
+model_folder = 'saved_model'
+
+# Download and unzip model if not present
+if not os.path.exists(model_folder):
+    with st.spinner('Downloading model... Please wait...'):
+        gdown.download(f'https://drive.google.com/uc?id={file_id}&export=download', zip_path, quiet=False)
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(model_folder)
+    os.remove(zip_path)
+
 @st.cache_resource(show_spinner=False)
 def load_model():
-    return tf.keras.models.load_model("resnet50_colon_cancer_model.h5")
+    model = tf.keras.models.load_model(model_folder)
+    return model
 
 model = load_model()
 
-# Tensorflow Model Prediction
 def model_prediction(test_image):
     image = tf.keras.preprocessing.image.load_img(test_image, target_size=(256, 256))
     input_arr = tf.keras.preprocessing.image.img_to_array(image)
@@ -75,25 +89,21 @@ elif app_mode == "About":
 elif app_mode == "Cancer Prediction":
     st.header("Cancer Prediction")
     test_image = st.file_uploader("Choose an Image:")
-
+    
     if test_image is not None:
         if st.button("Show Image"):
             st.image(test_image, use_column_width=True)
         
         if st.button("Predict"):
-            st.write("Our Prediction:")
+            st.write("Our Prediction")
             result_index = model_prediction(test_image)
-
-            # Class labels
-            class_names = ['ADI', 'BACK', 'DEB', 'LYM', 'MUC', 'MUS', 'NORM', 'STR', 'TUM']
-
-            cancer_classes = {'DEB', 'LYM', 'MUC', 'MUS', 'STR', 'TUM'}
-
-            predicted_label = class_names[result_index]
-
-            if predicted_label in cancer_classes:
-                st.error(f"The image is a cancer tissue. It's a {predicted_label}.")
-            elif predicted_label == 'NORM':
+            
+            class_name = ['ADI', 'BACK', 'DEB', 'LYM', 'MUC', 'MUS', 'NORM', 'STR', 'TUM']
+            result_label = class_name[result_index]
+            
+            if result_label in ['DEB', 'LYM', 'MUC', 'MUS', 'STR', 'TUM']:
+                st.error(f"The image is a cancer tissue. It's a {result_label}.")
+            elif result_label == 'NORM':
                 st.success("The image is not a cancer tissue.")
             else:
-                st.warning(f"The image is not a cancer tissue. It is another object: {predicted_label}")
+                st.warning(f"The image is not a cancer tissue. It is another object: {result_label}")
